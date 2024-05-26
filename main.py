@@ -6,29 +6,31 @@ import modules.check_input as check_input
 import modules.colors as colors
 import modules.ssd1306 as ssd1306
 
+reaper_ip = "http://192.168.1.219:8080"
 
-reaper = ReaperAPI("http://192.168.1.219:8080")
-
-
-async def api_worker():    
-    try:
-        return
- 
-    finally:
-        #print(colors.red + "API worker has completed."+ colors.reset)´
-        
-        await reaper.close()
+reaper = ReaperAPI(reaper_ip)
 
 async def main():
+    """
+    Main loop\n
+    Loop is responsible for calling functions to check slider or mute buttons updates.
+    """
+    
     await startup.start()
-    while True:
-        slider_task = uasyncio.create_task(check_input.sliders())
-        mute_task = uasyncio.create_task(check_input.mute())
-        api_worker_task = uasyncio.create_task(api_worker())
-
-        #print(colors.red + "Main application is running..." + colors.reset)
-        await uasyncio.gather(api_worker_task, slider_task, mute_task)
-        #await uasyncio.gather(api_worker_task, mute_task)
+    try:
+        print(colors.red + "Main application is running. Checking for slider or mute button update." + colors.reset)
+        while True:
+            slider_task = uasyncio.create_task(check_input.sliders())
+            mute_task = uasyncio.create_task(check_input.mute())
+            await uasyncio.gather(slider_task, mute_task)
+    except KeyboardInterrupt:
+        print(colors.red + "Program interrupted by user. Cleaning up..." + colors.reset)
+        await reaper.close()
+        print(colors.green + "Cleanup complete. Exiting program." + colors.reset)
+        return
 
 if __name__ == "__main__":
-    uasyncio.run(main())
+    try:
+        uasyncio.run(main())
+    except KeyboardInterrupt:
+        print(colors.red + "Program interrupted by user. Exiting..." + colors.reset)

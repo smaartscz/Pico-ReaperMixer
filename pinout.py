@@ -12,10 +12,11 @@ slider1 = ADC(Pin("GP26"))
 slider2 = ADC(Pin("GP27"))
 slider3 = ADC(Pin("GP28"))
 slider4 = ADC(Pin("GP28"))
-sliders = [slider1, slider2, slider3, slider4]
 
 mute1 = Pin("GP0", Pin.IN)
 mute2 = Pin("GP1", Pin.IN)
 mute3 = Pin("GP2", Pin.IN)
 mute4 = Pin("GP3", Pin.IN)
+
+sliders = [slider1, slider2, slider3, slider4]
 mute = [mute1, mute2, mute3, mute4]

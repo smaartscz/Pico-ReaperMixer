@@ -2,6 +2,10 @@ from modules.ReaperAPI import ReaperAPI
 import re
 import modules.colors as colors
 import track_mapping
+from main import reaper_ip
+
+
+reaper = ReaperAPI(reaper_ip)
 
 tracks_info = {}
 reaper_tracks = ""
@@ -21,8 +25,6 @@ keys = [
     "color"
 ]
 mapped_tracks = None
-
-reaper = ReaperAPI("http://192.168.1.219:8080")
 
 async def get_tracks_name():
     """
@@ -103,9 +105,7 @@ async def update_track(track, type, value):
     list: mapping
     """
     if type == 'slider':
-        if track == 5:
-            await reaper.set_volume(track, value)
-            return
+        await reaper.set_volume(track, value)
         return
 
     elif type == 'mute':
