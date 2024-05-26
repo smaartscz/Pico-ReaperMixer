@@ -5,10 +5,9 @@ import modules.colors as colors
 import modules.check_input as check_input
 import modules.colors as colors
 import modules.ssd1306 as ssd1306
+import configuration
 
-reaper_ip = "http://192.168.1.219:8080"
-
-reaper = ReaperAPI(reaper_ip)
+reaper = ReaperAPI(configuration.Reaper_IP)
 
 async def main():
     """

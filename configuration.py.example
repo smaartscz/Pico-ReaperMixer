@@ -1,0 +1,10 @@
+"""
+Configuration file.
+
+Requires these entries: ssid, password, Reaper_IP
+"""
+ssid = 'YourWifi'
+password = 'YourWifiPassword'
+
+
+Reaper_IP = "YourReaperWebIP"
