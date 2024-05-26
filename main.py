@@ -2,7 +2,7 @@ import uasyncio
 from modules.ReaperAPI import ReaperAPI
 import startup
 import modules.colors as colors
-from modules.check_input import check_sliders
+import modules.check_input as check_input
 import modules.colors as colors
 import modules.ssd1306 as ssd1306
 
@@ -22,13 +22,13 @@ async def api_worker():
 async def main():
     await startup.start()
     while True:
-        slider_task = uasyncio.create_task(check_sliders())
-       # button_task = uasyncio.create_task(check_buttons())
+        slider_task = uasyncio.create_task(check_input.sliders())
+        mute_task = uasyncio.create_task(check_input.mute())
         api_worker_task = uasyncio.create_task(api_worker())
 
         #print(colors.red + "Main application is running..." + colors.reset)
-        #await uasyncio.gather(api_worker_task, slider_task, button_task)
-        await uasyncio.gather(api_worker_task, slider_task)
+        await uasyncio.gather(api_worker_task, slider_task, mute_task)
+        #await uasyncio.gather(api_worker_task, mute_task)
 
 if __name__ == "__main__":
     uasyncio.run(main())

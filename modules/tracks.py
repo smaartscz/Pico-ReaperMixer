@@ -65,14 +65,14 @@ async def assaign_inputs_to_trackno():
         for track_id, track_info in reaper_tracks.items():
             
             track_name = track_info['trackname']
+            print(colors.yellow + f"Processing mapping for track {track_name}" + colors.reset)
             for item in mapping_list:
-                print(colors.yellow + f"Processing mapping for track {track_name}" + colors.reset)
                 if item['reaper'].lower() == track_name.lower():
                     item['tracknumber'] = int(track_info['tracknumber'])
                     item['slider_value'] = track_info.get('slider_value', 0.0)
                     item['mute_value'] = track_info.get('mute_value', False)
                     break
-                print(colors.green + f"Mapping for track {track_name} processed" + colors.reset)
+            print(colors.green + f"Mapping for track {track_name} processed" + colors.reset)
         print(colors.green + f"All tracks successfully mapped!" + colors.reset)
         mapped_tracks = mapping_list
     except Exception as e:
@@ -102,5 +102,12 @@ async def update_track(track, type, value):
     Returns:\n
     list: mapping
     """
-    return
-    print(f"track: {track}, value: {value}")
+    if type == 'slider':
+        if track == 5:
+            await reaper.set_volume(track, value)
+            return
+        return
+
+    elif type == 'mute':
+        await reaper.mute(track, value)
+        return

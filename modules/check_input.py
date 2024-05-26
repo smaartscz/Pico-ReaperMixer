@@ -1,44 +1,74 @@
 import pinout
 import modules.tracks as tracks
 import modules.colors as colors
-import uasyncio
-# sliders_value = {
-#     'slider1_value' : 0.0,
-#     "slider2_value" : 0.0,
-#     "slider3_value" : 0.0,
-#     "slider4_value" : 0.0
-# }
-# sliders_previous_value = {
-#     'slider1_value' : 0.0,
-#     "slider2_value" : 0.0,
-#     "slider3_value" : 0.0,
-#     "slider4_value" : 0.0
-# }
+import math
 
-# buttons_value = {
-#     'mute1_value' : False,
-#     "mute2_value" : False,
-#     "mute3_value" : False,
-#     "mute4_value" : False
-# }
-# buttons_previous_value = {
-#     'mute1_value' : False,
-#     "mute2_value" : False,
-#     "mute3_value" : False,
-#     "mute4_value" : False
-# }
+class KalmanFilter:
+    def __init__(self, process_variance, measurement_variance, estimated_measurement_variance=1):
+        self.process_variance = process_variance
+        self.measurement_variance = measurement_variance
+        self.estimated_measurement_variance = estimated_measurement_variance
+        self.posteri_estimate = 0.0
+        self.posteri_error_estimate = 1.0
 
+    def update(self, measurement):
+        priori_estimate = self.posteri_estimate
+        priori_error_estimate = self.posteri_error_estimate + self.process_variance
 
+        blending_factor = priori_error_estimate / (priori_error_estimate + self.measurement_variance)
+        self.posteri_estimate = priori_estimate + blending_factor * (measurement - priori_estimate)
+        self.posteri_error_estimate = (1 - blending_factor) * priori_error_estimate
 
-async def check_sliders():
+        return self.posteri_estimate
+    
+def read_filtered_adc(adc,alpha=0.1, num_samples=15):
     """
-    Check if any slider updated it's value. \n
+    Read the ADC value and apply a simple moving average filter.\n
+    Parameters:\n
+    adc: ADC object to read from.\n
+    num_samples: Number of samples to average.\n
 
-    Calls:\n
-    tracks.get_mapped_tracks()\n
-    tracks.update_track()\n
-
+    Return:\n
+    Filtered ADC value.\n
     """
+    total = 0
+    for _ in range(num_samples):
+        total += adc.read_u16()
+    average = total / num_samples
+    filtered_value = average / 65535.0
+
+    for _ in range(num_samples):
+        current_value = adc.read_u16() / 65535.0
+        filtered_value = alpha * current_value + (1 - alpha) * filtered_value
+
+    return filtered_value
+
+def linear_to_logarithmic(value):
+    """
+    Convert a linear potentiometer reading to a logarithmic scale.
+    Parameters:\n
+    value: Linear value in the range [0, 1].\n
+    Return:\n
+    Logarithmic value in the range [0, 1].
+    """
+    if value <= 0.01:
+        return 0
+    # Apply a logarithmic scale transformation
+    min_db = -100.0  # Minimum dB value (adjust as necessary)
+    if value <= 0:
+        return 0
+    # Apply a logarithmic scale transformation
+    log_value = min_db * (1 - value)
+    return 10 ** (log_value / 20)  # Convert dB to linear scale
+
+async def sliders():
+    """
+    Check if any slider updated its value.
+    Calls:
+    tracks.get_mapped_tracks()
+    tracks.update_track()
+    """
+    kalman_filters = [KalmanFilter(1e-3, 1e-2) for _ in pinout.sliders]
     map = await tracks.get_mapped_tracks()
 
     try:
@@ -49,47 +79,53 @@ async def check_sliders():
                 print(colors.red + f"Slider index {slider_index} out of range for track {track['name']}" + colors.reset)
                 continue
 
-            # Read the slider value from the corresponding pin
-            new_slider_value = pinout.sliders[slider_index].read_u16() / 65535.0
+            # Read the filtered slider value from the corresponding pin
+            raw_value = pinout.sliders[slider_index].read_u16() / 65535.0
+            filtered_value = kalman_filters[slider_index].update(raw_value)
+            log_slider_value = linear_to_logarithmic(filtered_value)
+            new_slider_value = round(log_slider_value, 5)  # Round to two decimal places
         
-            if new_slider_value != track["slider_value"]:
+            if abs(new_slider_value - track["slider_value"]) > 0.00078:  # Adjust threshold as necessary
                 print(colors.blue + f"Slider for {track['name']} changed from {track['slider_value']} to {new_slider_value}" + colors.reset)
                 track["slider_previous"] = track["slider_value"]
                 track["slider_value"] = new_slider_value
-                await tracks.update_track(track['tracknumber'], "Slider", new_slider_value)
+                await tracks.update_track(track['tracknumber'], "slider", new_slider_value)
     except Exception as e:
         print(colors.red + f"Error: {e}" + colors.reset)
 
+async def mute():
+    """
+    Check if any mute button updated its value.
+    Calls:
+    tracks.get_mapped_tracks()
+    tracks.update_track()
+    """
+    map = await tracks.get_mapped_tracks()
 
+    try:
+        for track in map:
+            mute_index = int(track["mute"]) - 1
 
-# async def check_sliders():
-#     #print(colors.yellow + "Checking Sliders" + colors.reset)
-#     sliders_previous_value = sliders_value.copy()
-#     slider1_value = slider1.read_u16()
-#     slider1_normalized = slider1_value/65535.0
-#     sliders_value["slider1_value"] = slider1_normalized
+            if mute_index >= len(pinout.mute):
+                print(colors.red + f"mute index {mute_index} out of range for track {track['name']}" + colors.reset)
+                continue
 
-#     slider2_value = slider2.read_u16()
-#     slider2_normalized = slider2_value/65535.0
-#     sliders_value["slider2_value"] = slider2_normalized
+            # Read the mute value from the corresponding pin
+            current_mute_value = pinout.mute[mute_index].value()
+            previous_mute_value = track.get("mute_previous", False)
 
-#     slider3_value = slider3.read_u16()
-#     slider3_normalized = slider3_value/65535.0
-#     sliders_value["slider3_value"] = slider3_normalized
+            # Check for rising edge (transition from not pressed to pressed)
+            if current_mute_value and not previous_mute_value:
+                # Toggle the mute value
+                new_mute_value = not track["mute_value"]
 
-#     slider4_value = slider4.read_u16()
-#     slider4_normalized = slider4_value/65535.0
-#     sliders_value["slider4_value"] = slider4_normalized
-#     return sliders_value, sliders_previous_value
+                print(colors.blue + f"Mute for {track['name']} toggled to {new_mute_value}" + colors.reset)
+                track["mute_previous"] = current_mute_value
+                track["mute_value"] = new_mute_value
+                await tracks.update_track(track["tracknumber"], "mute", '-1')
+            else:
+                # Update the previous state without toggling
+                track["mute_previous"] = current_mute_value
 
-
-
-
-# async def check_buttons():
-#     #print(colors.yellow + "Checking Buttons" + colors.reset)
-#     buttons_previous_value = buttons_value.copy()
-#     buttons_value["mute1_value"] = bool(mute1.value()) 
-#     buttons_value["mute2_value"] = bool(mute2.value()) 
-#     buttons_value["mute3_value"] = bool(mute3.value()) 
-#     buttons_value["mute4_value"] = bool(mute4.value()) 
-#     return buttons_value, buttons_previous_value
+    except Exception as e:
+        print(colors.red + f"Error: {e}" + colors.reset)
