@@ -1,6 +1,5 @@
 import pinout
-import modules.tracks as tracks
-import modules.colors as colors
+from modules import tracks, colors
 
 
 async def sliders():

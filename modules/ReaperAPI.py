@@ -1,5 +1,4 @@
-#import urequests
-import requests as urequests
+import urequests
 import modules.colors as colors
 
 class ReaperAPI:

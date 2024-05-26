@@ -2,10 +2,10 @@ from modules.ReaperAPI import ReaperAPI
 import re
 import modules.colors as colors
 import track_mapping
-from main import reaper_ip
+from configuration import Reaper_IP
 
 
-reaper = ReaperAPI(reaper_ip)
+reaper = ReaperAPI(Reaper_IP)
 
 tracks_info = {}
 reaper_tracks = ""

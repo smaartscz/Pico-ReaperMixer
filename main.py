@@ -1,10 +1,7 @@
 import uasyncio
 from modules.ReaperAPI import ReaperAPI
 import startup
-import modules.colors as colors
-import modules.check_input as check_input
-import modules.colors as colors
-import modules.ssd1306 as ssd1306
+from modules import check_input, colors
 import configuration
 
 reaper = ReaperAPI(configuration.Reaper_IP)
