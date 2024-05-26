@@ -1,104 +1,54 @@
 import pinout
 import modules.tracks as tracks
 import modules.colors as colors
-import math
 
-class KalmanFilter:
-    def __init__(self, process_variance, measurement_variance, estimated_measurement_variance=1):
-        self.process_variance = process_variance
-        self.measurement_variance = measurement_variance
-        self.estimated_measurement_variance = estimated_measurement_variance
-        self.posteri_estimate = 0.0
-        self.posteri_error_estimate = 1.0
-
-    def update(self, measurement):
-        priori_estimate = self.posteri_estimate
-        priori_error_estimate = self.posteri_error_estimate + self.process_variance
-
-        blending_factor = priori_error_estimate / (priori_error_estimate + self.measurement_variance)
-        self.posteri_estimate = priori_estimate + blending_factor * (measurement - priori_estimate)
-        self.posteri_error_estimate = (1 - blending_factor) * priori_error_estimate
-
-        return self.posteri_estimate
-    
-def read_filtered_adc(adc,alpha=0.1, num_samples=15):
-    """
-    Read the ADC value and apply a simple moving average filter.\n
-    Parameters:\n
-    adc: ADC object to read from.\n
-    num_samples: Number of samples to average.\n
-
-    Return:\n
-    Filtered ADC value.\n
-    """
-    total = 0
-    for _ in range(num_samples):
-        total += adc.read_u16()
-    average = total / num_samples
-    filtered_value = average / 65535.0
-
-    for _ in range(num_samples):
-        current_value = adc.read_u16() / 65535.0
-        filtered_value = alpha * current_value + (1 - alpha) * filtered_value
-
-    return filtered_value
-
-def linear_to_logarithmic(value):
-    """
-    Convert a linear potentiometer reading to a logarithmic scale.
-    Parameters:\n
-    value: Linear value in the range [0, 1].\n
-    Return:\n
-    Logarithmic value in the range [0, 1].
-    """
-    if value <= 0.01:
-        return 0
-    # Apply a logarithmic scale transformation
-    min_db = -100.0  # Minimum dB value (adjust as necessary)
-    if value <= 0:
-        return 0
-    # Apply a logarithmic scale transformation
-    log_value = min_db * (1 - value)
-    return 10 ** (log_value / 20)  # Convert dB to linear scale
 
 async def sliders():
     """
-    Check if any slider updated its value.
-    Calls:
-    tracks.get_mapped_tracks()
-    tracks.update_track()
+    Check if any slider updated its value.\n
+    
+    Calls:\n
+    tracks.get_mapped_tracks()\n
+    tracks.update_track()\n
     """
-    kalman_filters = [KalmanFilter(1e-3, 1e-2) for _ in pinout.sliders]
     map = await tracks.get_mapped_tracks()
 
     try:
         for track in map:
             slider_index = int(track["slider"]) - 1
 
+            # Check if slider is mapped correctly
             if slider_index >= len(pinout.sliders):
                 print(colors.red + f"Slider index {slider_index} out of range for track {track['name']}" + colors.reset)
                 continue
 
-            # Read the filtered slider value from the corresponding pin
-            raw_value = pinout.sliders[slider_index].read_u16() / 65535.0
-            filtered_value = kalman_filters[slider_index].update(raw_value)
-            log_slider_value = linear_to_logarithmic(filtered_value)
-            new_slider_value = round(log_slider_value, 5)  # Round to two decimal places
+            # Read the slider value from the corresponding pin
+            raw_value = pinout.sliders[slider_index].read_u16()
+            scaled_value = round((raw_value / 65535.0) * 1000)
+            reaper_value = scaled_value/1000
+            new_slider_value = reaper_value
         
-            if abs(new_slider_value - track["slider_value"]) > 0.00078:  # Adjust threshold as necessary
+            if abs(new_slider_value - track["slider_value"]) >= 0.005:
+                # Adjust accordingly if we are close to 0 or 1.0
+                if new_slider_value <= 0.005:
+                    new_slider_value = 0.0
+                elif new_slider_value >= 0.995:
+                    new_slider_value = 1.0
+
                 print(colors.blue + f"Slider for {track['name']} changed from {track['slider_value']} to {new_slider_value}" + colors.reset)
                 track["slider_previous"] = track["slider_value"]
                 track["slider_value"] = new_slider_value
                 await tracks.update_track(track['tracknumber'], "slider", new_slider_value)
+                return
     except Exception as e:
         print(colors.red + f"Error: {e}" + colors.reset)
 
 async def mute():
     """
-    Check if any mute button updated its value.
-    Calls:
-    tracks.get_mapped_tracks()
-    tracks.update_track()
+    Check if any mute button updated its value.\n
+    Calls:\n
+    tracks.get_mapped_tracks()\n
+    tracks.update_track()\n
     """
     map = await tracks.get_mapped_tracks()
 
@@ -106,6 +56,7 @@ async def mute():
         for track in map:
             mute_index = int(track["mute"]) - 1
 
+            # Check if mute button is mapped correctly
             if mute_index >= len(pinout.mute):
                 print(colors.red + f"mute index {mute_index} out of range for track {track['name']}" + colors.reset)
                 continue
