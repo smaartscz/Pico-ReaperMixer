@@ -1,5 +1,5 @@
 from modules.ReaperAPI import ReaperAPI
-import asyncio
+import modules.wifi as wifi
 import modules.colors as colors
 import re
 reaper = ReaperAPI("http://192.168.1.219:8080")
@@ -41,3 +41,13 @@ async def get_tracks_name():
         print(colors.green + f"Track {track} processed" + colors.reset)
     print(colors.green + f"All {tracks_max} tracks processed" + colors.reset)
     return tracks_info
+
+
+async def start():
+    print(colors.red + "Starting boot sequence!" + colors.reset)
+    print(colors.red + "Connecting to Wifi.." + colors.reset)
+    wifi.connect()
+    print(colors.red + "Starting API worker"+ colors.reset)
+    # Initialize communication
+    print(colors.red + "Starting communication with REAPER API..." + colors.reset)
+    tracks_info = await get_tracks_name()

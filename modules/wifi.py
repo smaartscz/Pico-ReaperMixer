@@ -1,10 +1,10 @@
 import network
 import modules.colors as colors
-from machine import Pin
+from pinout import led
 from modules.do_not_share import ssid, password
 from time import sleep
 
-pin = Pin("LED", Pin.OUT)
+
 
 def connect():
     #Connect to WLAN
@@ -13,7 +13,7 @@ def connect():
     wlan.connect(ssid, password)
     while wlan.isconnected() == False:
         print(colors.yellow + 'Waiting for connection...' + colors.reset)
-        pin.toggle()
+        led.toggle()
         sleep(1)
-    pin.off()
+    led.off()
     print(colors.green + f"Successfully connected to Wifi:{wlan.ifconfig()}" + colors.reset)
