@@ -7,7 +7,9 @@ from time import sleep
 
 
 def connect():
-    #Connect to WLAN
+    """
+    Connect to wifi
+    """
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     wlan.connect(ssid, password)
