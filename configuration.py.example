@@ -6,6 +6,7 @@ Requires these entries: ssid, password, Reaper_IP.
 Configuration for pins can be found in file pinout.py
 Configuration for track mapping can be found in file track_mapping.py
 
+YOU NEED TO RENAME THIS FILE TO configuration.py!!!
 """
 ssid = 'YourWifi'
 password = 'YourWifiPassword'
